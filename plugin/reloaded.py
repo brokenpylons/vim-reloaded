@@ -17,7 +17,7 @@ def handle_error(fun):
 
 @handle_error
 def get_pages():
-    port = vim.eval('g:browserreload_port')
+    port = vim.eval('g:reloaded_port')
     response = urllib.request.urlopen(f'http://localhost:{port}/json/list')
     targets = json.loads(response.read())
 
@@ -35,14 +35,14 @@ def reload_page():
 
 @handle_error
 def activate_page():
-    port = vim.eval('g:browserreload_port')
+    port = vim.eval('g:reloaded_port')
     id = vim.eval('b:selectedpage.id')
     urllib.request.urlopen(f'http://localhost:{port}/json/activate/{id}')
 
 @handle_error
 def new_page():
     file = vim.eval('l:file')
-    port = vim.eval('g:browserreload_port')
+    port = vim.eval('g:reloaded_port')
     response = urllib.request.urlopen(f'http://localhost:{port}/json/new?{file}')
     page = json.loads(response.read())
     vim.command(f'let b:selectedpage = {page}')
