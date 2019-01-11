@@ -117,16 +117,16 @@ function! s:stop() abort
     augroup END
 endfunction
 
-command! Select call s:safecall('s:select')
-command! Start call s:safecall('s:start')
-command! Reload call s:safecall('s:reload')
-command! Stop call s:safecall('s:stop')
-command! Activate call s:safecall('s:activate')
-command! -nargs=? -complete=file Open call s:safecall('s:open', <f-args>)
-command! -nargs=? -complete=file New call s:safecall('s:new', <f-args>)
+command! ReloadedSelect call s:safecall('s:select')
+command! ReloadedStart call s:safecall('s:start')
+command! ReloadedReload call s:safecall('s:reload')
+command! ReloadedStop call s:safecall('s:stop')
+command! ReloadedActivate call s:safecall('s:activate')
+command! -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
+command! -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
 
-command! SelectStart call s:selectcall('s:start')
-command! SelectReload call s:selectcall('s:reload')
-command! SelectActivate call s:selectcall('s:activate')
-command! -nargs=? -complete=file SelectOpen call s:selectcall('s:open', <f-args>)
+command! ReloadedSelectStart call s:selectcall('s:start')
+command! ReloadedSelectReload call s:selectcall('s:reload')
+command! ReloadedSelectActivate call s:selectcall('s:activate')
+command! -nargs=? -complete=file ReloadedSelectOpen call s:selectcall('s:open', <f-args>)
 
