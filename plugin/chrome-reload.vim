@@ -16,11 +16,10 @@ function! s:rethrow(error)
     endif
 endfunction
 
-function! s:menuselect()
-    let s:menuindex = line('.') - 1
-    close
-    doautocmd User ReloadedMenuSelect
-    autocmd! User ReloadedMenuSelect
+function! s:ifselected()
+    if !exists('b:selectedpage')
+        throw 'nothingselected'
+    endif
 endfunction
 
 function! s:menu(name, items)
@@ -28,8 +27,13 @@ function! s:menu(name, items)
     setlocal buftype=nofile bufhidden=wipe noswapfile
     call setline(1, a:items)
 
+    function! s:menuselect()
+        let s:menuindex = line('.') - 1
+        close
+        doautocmd User ReloadedMenuSelect
+        autocmd! User ReloadedMenuSelect
+    endfunction
     nnoremap <silent> <buffer> <CR> :call <SID>menuselect()<CR>
-
     setlocal nomodifiable
 endfunction
 
@@ -55,7 +59,7 @@ def handle_error(fun):
         except (urllib.error.HTTPError, websocket.WebSocketBadStatusException):
             vim.command('let l:error = "notfound"')
         except urllib.error.URLError:
-            vim.command('let l:error = "cannotconnect"')
+            vim.command('let l:error = "cannotconnect"') 
     return wrapper
 
 @handle_error
@@ -109,7 +113,6 @@ function! s:select() abort
     call s:rethrow(l:error)
 
     let l:titles = map(copy(s:pages), {key, val -> val.title})
-    echo s:pages
 
     function! s:selected()
         let b:selectedpage = s:pages[s:menuindex]
@@ -119,30 +122,44 @@ function! s:select() abort
 endfunction
 
 function! s:selectx(fun, ...) abort
-    call s:select()
+    call s:safecall('s:select')
     execute 'autocmd User ReloadedMenuSelect :call call(' . string(a:fun) . ', ' . string(a:000) . ')'
 endfunction
 
 function! s:safecall(fun, ...) abort
     try
-        if !exists('b:selectedpage')
-            call call('s:selectx', [a:fun] + a:000)
-        else
-            call call(a:fun, a:000)
-        endif
+        call call(a:fun, a:000)
     catch /cannotconnect/
-        call s:error('Cannot connect to browser at port ' . g:browserreload_port)
+        call system('chromium --user-data-dir=/tmp --remote-debugging-port=9222 & &> /dev/null')
+        sleep 1000m
+        call call('s:safecall', [a:fun] + a:000)
+    catch /nothingselected/
+        call call('s:selectx', [a:fun] + a:000)
     catch /notfound/
         call call('s:selectx', [a:fun] + a:000)
     endtry
 endfunction
 
+function! s:errorcall(fun, ...) abort
+    try
+        call call(a:fun, a:000)
+    catch /nothingselected/
+        call s:error('WWW')
+    catch /cannotconnect/
+        call s:error('Cannot connect to browser at port ' . g:browserreload_port)
+    catch /notfound/
+        call s:error('XXX')
+    endtry
+endfunction
+
 function! s:focus() abort
+    call s:ifselected()
     python3 focus_page()
     call s:rethrow(l:error)
 endfunction
 
 function! s:reload() abort
+    call s:ifselected()
     python3 reload_page()
     call s:rethrow(l:error)
 endfunction
@@ -154,6 +171,7 @@ function! s:new(...) abort
 endfunction
 
 function! s:open(...) abort
+    call s:ifselected()
     let l:file = call('s:geturl', a:000)
     python3 open_page()
     call s:rethrow(l:error)
@@ -164,7 +182,6 @@ function! s:start() abort
         autocmd!
         autocmd BufWritePost <buffer> :call s:safecall('s:reload')
     augroup END
-    call s:reload()
 endfunction
 
 function! s:stop() abort
@@ -174,10 +191,10 @@ function! s:stop() abort
 endfunction
 
 command! Select call s:safecall('s:select')
-command! Start call s:safecall('s:start')
-command! Reload call s:safecall('s:reload')
-command! Stop call s:safecall('s:stop')
-command! Focus call s:safecall('s:focus')
-command! -nargs=? -complete=file Open call s:safecall('s:open', <f-args>)
-command! -nargs=? -complete=file New call s:safecall('s:new', <f-args>)
+command! Start call s:errorcall('s:start')
+command! Reload call s:errorcall('s:reload')
+command! Stop call s:errorcall('s:stop')
+command! Focus call s:errorcall('s:focus')
+command! -nargs=? -complete=file Open call s:errorcall('s:open', <f-args>)
+command! -nargs=? -complete=file New call s:errorcall('s:new', <f-args>)
 
