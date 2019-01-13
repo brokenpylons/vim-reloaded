@@ -28,36 +28,23 @@ function! s:focuslost()
     doautocmd User ReloadedFocusLost
 endfunction
 
-function! s:menu(name, items)
-    execute 'belowright 7new ' . a:name
-    setlocal buftype=nofile bufhidden=wipe noswapfile
-    call setline(1, a:items)
-
-    function! s:menuselect()
-        let s:menuindex = line('.') - 1
-        close
-        doautocmd User ReloadedMenuSelect
-        autocmd! User ReloadedMenuSelect
-    endfunction
-    nnoremap <silent> <buffer> <CR> :call <SID>menuselect()<CR>
-    setlocal nomodifiable
-endfunction
-
 function! s:geturl(...)
     return 'file://' . fnamemodify(get(a:, 1, expand('%')), ':p')
 endfunction
 
-function! s:select() abort
+function! s:bind() abort
     python3 get_pages()
     call s:rethrow(l:error)
 
-    let l:titles = map(copy(s:pages), {key, val -> val.title})
+    for l:page in s:pages
+        python get_active_page()
+        call s:rethrow(l:error)
 
-    function! s:selected()
-        let b:selectedpage = s:pages[s:menuindex]
-    endfunction
-    call s:menu('[pages]', l:titles)
-    autocmd User ReloadedMenuSelect :call s:selected()
+        if l:value
+            let b:selectedpage = l:page
+            break
+        endif
+    endfor
 endfunction
 
 function! s:safecall(fun, ...) abort
@@ -70,11 +57,6 @@ function! s:safecall(fun, ...) abort
     catch /notfound/
         call s:error('The page "'. b:selectedpage.title . '" could not be found. Did you close it?')
     endtry
-endfunction
-
-function! s:selectcall(fun, ...) abort
-    call s:safecall('s:select')
-    execute 'autocmd User ReloadedMenuSelect :call call(' . string(a:fun) . ', ' . string(a:000) . ')'
 endfunction
 
 function! s:activate() abort
@@ -117,16 +99,10 @@ function! s:stop() abort
     augroup END
 endfunction
 
-command! ReloadedSelect call s:safecall('s:select')
+command! ReloadedBind call s:safecall('s:bind')
 command! ReloadedStart call s:safecall('s:start')
 command! ReloadedReload call s:safecall('s:reload')
 command! ReloadedStop call s:safecall('s:stop')
 command! ReloadedActivate call s:safecall('s:activate')
 command! -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
 command! -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
-
-command! ReloadedSelectStart call s:selectcall('s:start')
-command! ReloadedSelectReload call s:selectcall('s:reload')
-command! ReloadedSelectActivate call s:selectcall('s:activate')
-command! -nargs=? -complete=file ReloadedSelectOpen call s:selectcall('s:open', <f-args>)
-

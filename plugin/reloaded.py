@@ -8,7 +8,7 @@ def handle_error(fun):
     def wrapper(*args, **kwargs):
         vim.command('let l:error = ""')
         try:
-            return fun(*args, **kwargs)
+            fun(*args, **kwargs)
         except (urllib.error.HTTPError, websocket.WebSocketBadStatusException):
             vim.command('let l:error = "notfound"')
         except urllib.error.URLError:
@@ -23,6 +23,20 @@ def get_pages():
 
     pages = [x for x in targets if x['type'] == 'page']
     vim.command(f'let s:pages = {pages}')
+
+@handle_error
+def get_active_page(): 
+    url = vim.eval('b:selectedpage.webSocketDebuggerUrl')
+    ws = websocket.create_connection(url)
+    ws.send("""{
+        "method": "Runtime.evaluate",
+        "params": {
+            "expression": "document.hasFocus();"
+        },
+        "id": 1
+    }""")
+    result = ws.recv()
+    vim.command('let l:focused = {result.value}') 
 
 @handle_error
 def reload_page():
