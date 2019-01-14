@@ -26,21 +26,22 @@ def get_pages():
 
 @handle_error
 def get_active_page(): 
-    url = vim.eval('b:selectedpage.webSocketDebuggerUrl')
+    url = vim.eval('l:page.webSocketDebuggerUrl')
     ws = websocket.create_connection(url)
     ws.send("""{
         "method": "Runtime.evaluate",
         "params": {
-            "expression": "document.hasFocus();"
+            "expression": "!document.hidden"
         },
         "id": 1
     }""")
-    result = ws.recv()
-    vim.command('let l:focused = {result.value}') 
+    result = json.loads(ws.recv())
+    focused = result['result']['result']['value']
+    vim.command(f'let l:focused = {int(focused)}') 
 
 @handle_error
 def reload_page():
-    url = vim.eval('b:selectedpage.webSocketDebuggerUrl')
+    url = vim.eval('b:boundpage.webSocketDebuggerUrl')
     ws = websocket.create_connection(url)
     ws.send("""{
         "method": "Page.reload",
@@ -50,7 +51,7 @@ def reload_page():
 @handle_error
 def activate_page():
     port = vim.eval('g:reloaded_port')
-    id = vim.eval('b:selectedpage.id')
+    id = vim.eval('b:boundpage.id')
     urllib.request.urlopen(f'http://localhost:{port}/json/activate/{id}')
 
 @handle_error
@@ -59,12 +60,12 @@ def new_page():
     port = vim.eval('g:reloaded_port')
     response = urllib.request.urlopen(f'http://localhost:{port}/json/new?{file}')
     page = json.loads(response.read())
-    vim.command(f'let b:selectedpage = {page}')
+    vim.command(f'let b:boundpage = {page}')
 
 @handle_error
 def open_page():
     file = vim.eval('l:file')
-    url = vim.eval('b:selectedpage.webSocketDebuggerUrl')
+    url = vim.eval('b:boundpage.webSocketDebuggerUrl')
     ws = websocket.create_connection(url)
     ws.send("""{
         "method": "Page.navigate",

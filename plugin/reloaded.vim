@@ -18,14 +18,14 @@ function! s:rethrow(error)
     endif
 endfunction
 
-function! s:ifselected()
-    if !exists('b:selectedpage')
-        throw 'nothingselected'
+function! s:ifbound()
+    if !exists('b:boundpage')
+        throw 'notbound'
     endif
 endfunction
 
 function! s:focuslost()
-    doautocmd User ReloadedFocusLost
+    silent doautocmd User ReloadedFocusLost
 endfunction
 
 function! s:geturl(...)
@@ -37,11 +37,12 @@ function! s:bind() abort
     call s:rethrow(l:error)
 
     for l:page in s:pages
-        python get_active_page()
+        python3 get_active_page()
         call s:rethrow(l:error)
+        echo l:focused
 
-        if l:value
-            let b:selectedpage = l:page
+        if l:focused
+            let b:boundpage = l:page
             break
         endif
     endfor
@@ -52,22 +53,22 @@ function! s:safecall(fun, ...) abort
         call call(a:fun, a:000)
     catch /cannotconnect/
         call s:error('Cannot connect to the browser at port ' . g:reloaded_port)
-    catch /nothingselected/
-        call s:error('You need to select the page first')
+    catch /notbound/
+        call s:error('You need to bind the page first')
     catch /notfound/
-        call s:error('The page "'. b:selectedpage.title . '" could not be found. Did you close it?')
+        call s:error('The page "'. b:boundpage.title . '" could not be found. Did you close it?')
     endtry
 endfunction
 
 function! s:activate() abort
-    call s:ifselected()
+    call s:ifbound()
     python3 activate_page()
     call s:rethrow(l:error)
     call s:focuslost()
 endfunction
 
 function! s:reload() abort
-    call s:ifselected()
+    call s:ifbound()
     python3 reload_page()
     call s:rethrow(l:error)
 endfunction
@@ -80,7 +81,7 @@ function! s:new(...) abort
 endfunction
 
 function! s:open(...) abort
-    call s:ifselected()
+    call s:ifbound()
     let l:file = call('s:geturl', a:000)
     python3 open_page()
     call s:rethrow(l:error)
