@@ -4,7 +4,7 @@ import urllib.error
 import json
 import websocket
 
-def handle_error(fun):
+def handle_errors(fun):
     def wrapper(*args, **kwargs):
         vim.command('let l:error = ""')
         try:
@@ -15,7 +15,29 @@ def handle_error(fun):
             vim.command('let l:error = "cannotconnect"') 
     return wrapper
 
-@handle_error
+def call(ws_url, method, **kwargs):
+    ws = websocket.create_connection(ws_url)
+    message = {
+        'method': method,
+        'params': kwargs,
+        'id': 1
+    }
+    ws.send(json.dumps(message))
+    result = json.loads(ws.recv())
+    ws.close()
+    return result['result']
+
+@handle_errors
+def is_browser_open():
+    port = vim.eval('g:reloaded_port')
+    try:
+        urllib.request.urlopen(f'http://localhost:{port}')
+    except (urllib.error.HTTPError, urllib.error.URLError):
+        vim.command('let l:result = 0')
+        return
+    vim.command('let l:result = 1')
+
+@handle_errors
 def get_pages():
     port = vim.eval('g:reloaded_port')
     response = urllib.request.urlopen(f'http://localhost:{port}/json/list')
@@ -24,37 +46,25 @@ def get_pages():
     pages = [x for x in targets if x['type'] == 'page']
     vim.command(f'let s:pages = {pages}')
 
-@handle_error
+@handle_errors
 def get_active_page(): 
     url = vim.eval('l:page.webSocketDebuggerUrl')
-    ws = websocket.create_connection(url)
-    ws.send("""{
-        "method": "Runtime.evaluate",
-        "params": {
-            "expression": "!document.hidden"
-        },
-        "id": 1
-    }""")
-    result = json.loads(ws.recv())
-    focused = result['result']['result']['value']
+    result = call(url, 'Runtime.evaluate', expression='!document.hidden')
+    focused = result['result']['value']
     vim.command(f'let l:focused = {int(focused)}') 
 
-@handle_error
+@handle_errors
 def reload_page():
     url = vim.eval('b:boundpage.webSocketDebuggerUrl')
-    ws = websocket.create_connection(url)
-    ws.send("""{
-        "method": "Page.reload",
-        "id": 1
-    }""")
+    call(url, 'Page.reload')
 
-@handle_error
+@handle_errors
 def activate_page():
     port = vim.eval('g:reloaded_port')
     id = vim.eval('b:boundpage.id')
     urllib.request.urlopen(f'http://localhost:{port}/json/activate/{id}')
 
-@handle_error
+@handle_errors
 def new_page():
     file = vim.eval('l:file')
     port = vim.eval('g:reloaded_port')
@@ -62,15 +72,8 @@ def new_page():
     page = json.loads(response.read())
     vim.command(f'let b:boundpage = {page}')
 
-@handle_error
+@handle_errors
 def open_page():
     file = vim.eval('l:file')
     url = vim.eval('b:boundpage.webSocketDebuggerUrl')
-    ws = websocket.create_connection(url)
-    ws.send("""{
-        "method": "Page.navigate",
-        "params": {
-            "url": "%s"
-        },
-        "id": 1
-    }""" % file)
+    call(url, 'Page.navigate', url=file)

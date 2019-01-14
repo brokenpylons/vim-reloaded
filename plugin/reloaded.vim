@@ -32,22 +32,6 @@ function! s:geturl(...)
     return 'file://' . fnamemodify(get(a:, 1, expand('%')), ':p')
 endfunction
 
-function! s:bind() abort
-    python3 get_pages()
-    call s:rethrow(l:error)
-
-    for l:page in s:pages
-        python3 get_active_page()
-        call s:rethrow(l:error)
-        echo l:focused
-
-        if l:focused
-            let b:boundpage = l:page
-            break
-        endif
-    endfor
-endfunction
-
 function! s:safecall(fun, ...) abort
     try
         call call(a:fun, a:000)
@@ -58,6 +42,27 @@ function! s:safecall(fun, ...) abort
     catch /notfound/
         call s:error('The page "'. b:boundpage.title . '" could not be found. Did you close it?')
     endtry
+endfunction
+
+function! g:Reloaded_isbrowseropen() abort
+    python3 is_browser_open()
+    call s:rethrow(l:error)
+    return l:result
+endfunction
+
+function! s:bind() abort
+    python3 get_pages()
+    call s:rethrow(l:error)
+
+    for l:page in s:pages
+        python3 get_active_page()
+        call s:rethrow(l:error)
+
+        if l:focused
+            let b:boundpage = l:page
+            break
+        endif
+    endfor
 endfunction
 
 function! s:activate() abort
@@ -101,9 +106,9 @@ function! s:stop() abort
 endfunction
 
 command! ReloadedBind call s:safecall('s:bind')
-command! ReloadedStart call s:safecall('s:start')
 command! ReloadedReload call s:safecall('s:reload')
-command! ReloadedStop call s:safecall('s:stop')
 command! ReloadedActivate call s:safecall('s:activate')
+command! ReloadedStart call s:safecall('s:start')
+command! ReloadedStop call s:safecall('s:stop')
 command! -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
 command! -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
