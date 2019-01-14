@@ -3,6 +3,7 @@ import urllib.request
 import urllib.error
 import json
 import websocket
+import threading
 
 def handle_errors(fun):
     def wrapper(*args, **kwargs):
@@ -15,14 +16,17 @@ def handle_errors(fun):
             vim.command('let l:error = "cannotconnect"') 
     return wrapper
 
-def call(ws_url, method, **kwargs):
-    ws = websocket.create_connection(ws_url)
+def create_message(method, **kwargs):
     message = {
         'method': method,
         'params': kwargs,
         'id': 1
     }
-    ws.send(json.dumps(message))
+    return json.dumps(message)
+
+def call(ws_url, method, **kwargs):
+    ws = websocket.create_connection(ws_url)
+    ws.send(create_message(method, **kwargs))
     result = json.loads(ws.recv())
     ws.close()
     return result['result']
@@ -77,3 +81,35 @@ def open_page():
     file = vim.eval('l:file')
     url = vim.eval('b:boundpage.webSocketDebuggerUrl')
     call(url, 'Page.navigate', url=file)
+
+@handle_errors
+def evaluate():
+    expression = vim.eval('l:expression')
+    url = vim.eval('b:boundpage.webSocketDebuggerUrl')
+    response = call(url, 'Runtime.evaluate', expression=expression, includeCommandLineAPI=True)
+    result = resonse['result']['value']
+    vim.command(f'let l:result = {result}') 
+
+
+loggers = {}
+
+@handle_errors
+def log():
+    ws_url = vim.eval('b:boundpage.webSocketDebuggerUrl')
+
+    def on_open(ws):
+        ws.send(create_message('Runtime.enable'))
+
+    def on_message(ws, message):
+        messages[ws_url]['messages'].append(message)
+
+    def thread(ws_url):
+        ws = websocket.WebSocketApp(ws_url, on_open=on_open, on_message=on_message)
+        ws.run_forever()
+
+    if ws_url not in loggers:
+        loggers[ws_url] = {
+            'thread': threading.Thread(target=thread, args=(ws_url,)).start(),
+            'messages': []
+        }
+    vim.command(f'echo {loggers[ws_url]["messages"]}')

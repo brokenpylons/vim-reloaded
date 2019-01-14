@@ -92,6 +92,21 @@ function! s:open(...) abort
     call s:rethrow(l:error)
 endfunction
 
+function! s:console() abort
+    call s:ifbound()
+    let l:expression = input('>>> ')
+    redraw
+    python3 evaluate()
+    call s:rethrow(l:error)
+    echo l:result
+endfunction
+
+function! s:log() abort
+    call s:ifbound()
+    python3 log()
+    call s:rethrow(l:error)
+endfunction
+
 function! s:start() abort
     augroup Reloaded
         autocmd!
@@ -110,5 +125,7 @@ command! ReloadedReload call s:safecall('s:reload')
 command! ReloadedActivate call s:safecall('s:activate')
 command! ReloadedStart call s:safecall('s:start')
 command! ReloadedStop call s:safecall('s:stop')
+command! ReloadedConsole call s:safecall('s:console')
+command! ReloadedLog call s:safecall('s:log')
 command! -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
 command! -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
