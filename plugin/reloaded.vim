@@ -110,7 +110,7 @@ endfunction
 function! s:start() abort
     augroup Reloaded
         autocmd!
-        autocmd BufWritePost <buffer> :call s:safecall('s:reload')
+        autocmd BufWritePost <buffer> ReloadedPostWrite
     augroup END
 endfunction
 
@@ -120,12 +120,14 @@ function! s:stop() abort
     augroup END
 endfunction
 
-command! ReloadedBind call s:safecall('s:bind')
-command! ReloadedReload call s:safecall('s:reload')
-command! ReloadedActivate call s:safecall('s:activate')
-command! ReloadedStart call s:safecall('s:start')
-command! ReloadedStop call s:safecall('s:stop')
-command! ReloadedConsole call s:safecall('s:console')
-command! ReloadedLog call s:safecall('s:log')
-command! -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
-command! -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
+command! -bar ReloadedBind call s:safecall('s:bind')
+command! -bar ReloadedReload call s:safecall('s:reload')
+command! -bar ReloadedActivate call s:safecall('s:activate')
+command! -bar ReloadedStart call s:safecall('s:start')
+command! -bar ReloadedStop call s:safecall('s:stop')
+command! -bar ReloadedConsole call s:safecall('s:console')
+command! -bar ReloadedLog call s:safecall('s:log')
+command! -bar -nargs=? -complete=file ReloadedOpen call s:safecall('s:open', <f-args>)
+command! -bar -nargs=? -complete=file ReloadedNew call s:safecall('s:new', <f-args>)
+command! -bar Reloaded ReloadedBind|ReloadedOpen|ReloadedStart
+command! -bar ReloadedPostWrite ReloadedReload|ReloadedActivate
