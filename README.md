@@ -1,5 +1,7 @@
 # vim-reloaded
 
+Pre alpha, but the basic functions work.
+
 ## Installation
 
 ### VimPlug
